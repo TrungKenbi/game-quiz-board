@@ -1,7 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import _ from "lodash";
+import React, { useState, useEffect } from 'react';
+import _ from 'lodash';
+import confetti from 'canvas-confetti';
+import data from '@/app/data/questions';
+
 
 interface Question {
   id: number;
@@ -59,33 +62,7 @@ const GameQuizBoard = () => {
   useEffect(() => {
     initializeGame();
     // Khởi tạo câu hỏi mẫu
-    setQuestions([
-      {
-        id: 1,
-        author: "Hiền",
-        question:
-          "Trong câu truyện treo biển, ở lần đầu tiên, khách hàng yêu cầu chàng trai bỏ chữ nào trong tấm biển?",
-        options: {
-          A: "Ở đây",
-          B: "Cá tươi",
-          C: "Có bán",
-          D: "Tươi",
-        },
-        correctAnswer: "D",
-      },
-      {
-        id: 2,
-        author: "Hiền",
-        question: "Chỉ số CES được đề cập trong bài là viết tắt của từ nào",
-        options: {
-          A: "Consumer Electronics Show",
-          B: "Certified Energy Specialist",
-          C: "Corporate Environmental Strategy",
-          D: "Customer Effort Score",
-        },
-        correctAnswer: "D",
-      },
-    ]);
+    setQuestions(data.questions);
   }, []);
 
   const initializeGame = () => {
@@ -123,16 +100,17 @@ const GameQuizBoard = () => {
     setShowResult(true);
   };
 
-  const handleCloseModal = () => {
+// Cập nhật handleCloseModal để thêm hiệu ứng khi trả lời đúng
+const handleCloseModal = () => {
     if (!showResult) return;
-
+    
     if (currentQuestion) {
       const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
       handleMoveComplete(
         isCorrect ? 5 : 0,
-        isCorrect
-          ? `${TEAMS[currentTeam]} trả lời đúng! +5 điểm 🎯`
-          : `${TEAMS[currentTeam]} trả lời sai 😢`
+        isCorrect ? 
+          `${TEAMS[currentTeam]} trả lời đúng! +5 điểm 🎯` : 
+          `${TEAMS[currentTeam]} trả lời sai 😢`
       );
     }
 
@@ -143,14 +121,58 @@ const GameQuizBoard = () => {
     setIsProcessing(false);
   };
 
+  // Thêm hàm bắn pháo hoa
+  const fireConfetti = () => {
+    // Bắn từ góc trái
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { x: 0.1, y: 0.6 }
+    });
+
+    // Bắn từ góc phải
+    setTimeout(() => {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { x: 0.9, y: 0.6 }
+      });
+    }, 250);
+  };
+
+  // Thêm hiệu ứng pháo hoa đặc biệt khi thắng
+  const fireWinnerConfetti = () => {
+    const duration = 3000;
+    const end = Date.now() + duration;
+
+    const interval = setInterval(() => {
+      if (Date.now() > end) {
+        return clearInterval(interval);
+      }
+
+      confetti({
+        startVelocity: 30,
+        particleCount: 50,
+        spread: 360,
+        ticks: 60,
+        origin: {
+          x: Math.random(),
+          y: Math.random() - 0.2
+        }
+      });
+    }, 250);
+  };
+
   const handleMoveComplete = (points: number, msg: string) => {
     // Cập nhật điểm số
-    if (points !== 0) {
-      setScores((prev) => ({
-        ...prev,
-        [TEAMS[currentTeam]]: Math.max(0, prev[TEAMS[currentTeam]] + points),
-      }));
-    }
+    if (points > 0) {
+        setScores(prev => ({
+          ...prev,
+          [TEAMS[currentTeam]]: Math.max(0, prev[TEAMS[currentTeam]] + points)
+        }));
+        // Bắn pháo hoa khi được cộng điểm
+        fireConfetti();
+      }
 
     // Đánh dấu ô đã sử dụng
     if (selectedCell !== null) {
@@ -172,15 +194,13 @@ const GameQuizBoard = () => {
     setMessage(msg + ` | Đến lượt ${TEAMS[nextTeam]}`);
 
     // Kiểm tra kết thúc game
-    if (Object.values(newMoves).every((m) => m === 0)) {
-      const winner = Object.entries(scores).reduce((a, b) =>
-        a[1] > b[1] ? a : b
-      )[0];
-      setMessage(
-        `🎉 Trò chơi kết thúc! ${winner} chiến thắng với ${scores[winner]} điểm! 🎉`
-      );
-      setGameEnded(true);
-    }
+    if (Object.values(newMoves).every(m => m === 0)) {
+        const winner = Object.entries(scores).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+        setMessage(`🎉 Trò chơi kết thúc! ${winner} chiến thắng với ${scores[winner]} điểm! 🎉`);
+        setGameEnded(true);
+        // Bắn pháo hoa đặc biệt khi kết thúc game
+        fireWinnerConfetti();
+      }
   };
 
   const handleCellClick = (index: number) => {
