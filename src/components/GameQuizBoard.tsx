@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import _ from 'lodash';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Question {
   id: number;
@@ -49,17 +48,43 @@ const GameQuizBoard = () => {
   const [movesLeft, setMovesLeft] = useState<TeamMoves>({});
   const [message, setMessage] = useState('');
   const [gameEnded, setGameEnded] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [showResult, setShowResult] = useState(false);
 
   useEffect(() => {
     initializeGame();
-    // Tải dữ liệu câu hỏi
-    fetch('/questions.json')
-      .then(response => response.json())
-      .then(data => setQuestions(data.questions));
+    // Khởi tạo câu hỏi mẫu
+    setQuestions([
+      {
+        id: 1,
+        author: "Hiền",
+        question: "Trong câu truyện treo biển, ở lần đầu tiên, khách hàng yêu cầu chàng trai bỏ chữ nào trong tấm biển?",
+        options: {
+          A: "Ở đây",
+          B: "Cá tươi",
+          C: "Có bán",
+          D: "Tươi"
+        },
+        correctAnswer: "D"
+      },
+      {
+        id: 2,
+        author: "Hiền",
+        question: "Chỉ số CES được đề cập trong bài là viết tắt của từ nào",
+        options: {
+          A: "Consumer Electronics Show",
+          B: "Certified Energy Specialist",
+          C: "Corporate Environmental Strategy",
+          D: "Customer Effort Score"
+        },
+        correctAnswer: "D"
+      }
+    ]);
   }, []);
 
   const initializeGame = () => {
@@ -69,6 +94,7 @@ const GameQuizBoard = () => {
     setMovesLeft(initialMoves);
     setGameEnded(false);
     setMessage('Trò chơi bắt đầu! ' + TEAMS[0] + ' đi trước');
+    setIsProcessing(false);
 
     const cells = [
       ...Array(10).fill(CELL_TYPES.QUESTION),
@@ -84,26 +110,34 @@ const GameQuizBoard = () => {
     return questions[randomIndex];
   };
 
-  const handleAnswerSelect = (selectedAnswer: string) => {
-    if (!currentQuestion) return;
-    
-    const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
-    let msg = '';
-    let points = 0;
+  const handleAnswerSelect = (answer: string) => {
+    if (showResult) return;
+    setSelectedAnswer(answer);
+    setShowResult(true);
+  };
 
-    if (isCorrect) {
-      points = 5;
-      msg = `${TEAMS[currentTeam]} trả lời đúng! +5 điểm 🎯`;
-    } else {
-      msg = `${TEAMS[currentTeam]} trả lời sai 😢 Đáp án đúng là ${currentQuestion.correctAnswer}`;
+  const handleCloseModal = () => {
+    if (!showResult) return;
+    
+    if (currentQuestion) {
+      const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+      handleMoveComplete(
+        isCorrect ? 5 : 0,
+        isCorrect ? 
+          `${TEAMS[currentTeam]} trả lời đúng! +5 điểm 🎯` : 
+          `${TEAMS[currentTeam]} trả lời sai 😢`
+      );
     }
 
-    handleMoveComplete(points, msg);
     setIsQuestionDialogOpen(false);
+    setSelectedAnswer(null);
+    setShowResult(false);
     setCurrentQuestion(null);
+    setIsProcessing(false);
   };
 
   const handleMoveComplete = (points: number, msg: string) => {
+    // Cập nhật điểm số
     if (points !== 0) {
       setScores(prev => ({
         ...prev,
@@ -125,16 +159,28 @@ const GameQuizBoard = () => {
     };
     setMovesLeft(newMoves);
     
+    // Chuyển lượt
     const nextTeam = (currentTeam + 1) % TEAMS.length;
     setCurrentTeam(nextTeam);
     setMessage(msg + ` | Đến lượt ${TEAMS[nextTeam]}`);
 
-    checkGameEnd(newMoves);
+    // Kiểm tra kết thúc game
+    if (Object.values(newMoves).every(m => m === 0)) {
+      const winner = Object.entries(scores).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+      setMessage(`🎉 Trò chơi kết thúc! ${winner} chiến thắng với ${scores[winner]} điểm! 🎉`);
+      setGameEnded(true);
+    }
   };
 
   const handleCellClick = (index: number) => {
-    if (gameBoard[index] === null || movesLeft[TEAMS[currentTeam]] === 0 || gameEnded) return;
+    if (
+      gameBoard[index] === null || 
+      movesLeft[TEAMS[currentTeam]] === 0 || 
+      gameEnded ||
+      isProcessing
+    ) return;
 
+    setIsProcessing(true);
     setSelectedCell(index);
     const cellType = gameBoard[index];
 
@@ -147,10 +193,12 @@ const GameQuizBoard = () => {
 
       case CELL_TYPES.LUCKY:
         handleMoveComplete(5, `May mắn! ${TEAMS[currentTeam]} được +5 điểm 🍀`);
+        setIsProcessing(false);
         break;
 
       case CELL_TYPES.UNLUCKY:
         handleMoveComplete(-5, `Không may! ${TEAMS[currentTeam]} bị -5 điểm 💔`);
+        setIsProcessing(false);
         break;
 
       case CELL_TYPES.SABOTAGE:
@@ -165,15 +213,8 @@ const GameQuizBoard = () => {
         } else {
           setMessage('Lựa chọn không hợp lệ!');
         }
+        setIsProcessing(false);
         break;
-    }
-  };
-
-  const checkGameEnd = (moves: TeamMoves) => {
-    if (Object.values(moves).every(m => m === 0)) {
-      const winner = Object.entries(scores).reduce((a, b) => a[1] > b[1] ? a : b)[0];
-      setMessage(`🎉 Trò chơi kết thúc! ${winner} chiến thắng với ${scores[winner]} điểm! 🎉`);
-      setGameEnded(true);
     }
   };
 
@@ -214,45 +255,71 @@ const GameQuizBoard = () => {
           <button
             key={index}
             onClick={() => handleCellClick(index)}
-            disabled={!cell || gameEnded}
+            disabled={!cell || gameEnded || isProcessing}
             className={`h-24 rounded-lg font-bold text-2xl text-white transition-all transform hover:scale-105 ${
               cell ? 'bg-blue-500 hover:bg-blue-600 cursor-pointer' : 'bg-gray-300 cursor-not-allowed'
-            }`}
+            } ${isProcessing ? 'opacity-50' : ''}`}
           >
             {cell ? '?' : '✓'}
           </button>
         ))}
       </div>
 
-      {/* Dialog câu hỏi */}
-      <Dialog open={isQuestionDialogOpen} onOpenChange={setIsQuestionDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Câu hỏi cho {TEAMS[currentTeam]}</DialogTitle>
-          </DialogHeader>
-          {currentQuestion && (
-            <div className="p-4">
+      {/* Modal câu hỏi */}
+      {isQuestionDialogOpen && currentQuestion && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+            <div className="mb-6">
+              <h3 className="text-xl font-bold mb-4">Câu hỏi cho {TEAMS[currentTeam]}</h3>
               <p className="text-lg mb-4">{currentQuestion.question}</p>
-              <div className="space-y-2">
-                {Object.entries(currentQuestion.options).map(([key, value]) => (
-                  <button
-                    key={key}
-                    onClick={() => handleAnswerSelect(key)}
-                    className="w-full p-2 text-left hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    {key}. {value}
-                  </button>
-                ))}
-              </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+
+            <div className="space-y-3">
+              {Object.entries(currentQuestion.options).map(([key, value]) => (
+                <button
+                  key={key}
+                  onClick={() => handleAnswerSelect(key)}
+                  disabled={showResult}
+                  className={`w-full p-4 text-left rounded-lg transition-colors border ${
+                    showResult 
+                      ? key === currentQuestion.correctAnswer
+                        ? 'bg-green-100 border-green-500'
+                        : key === selectedAnswer && key !== currentQuestion.correctAnswer
+                          ? 'bg-red-100 border-red-500'
+                          : 'bg-gray-50 border-gray-200'
+                      : 'hover:bg-gray-100 border-gray-200'
+                  }`}
+                >
+                  {key}. {value}
+                  {showResult && key === currentQuestion.correctAnswer && (
+                    <span className="float-right text-green-500">✓</span>
+                  )}
+                  {showResult && key === selectedAnswer && key !== currentQuestion.correctAnswer && (
+                    <span className="float-right text-red-500">✗</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {showResult && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={handleCloseModal}
+                  className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  Đóng
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Nút reset */}
       <button
         onClick={initializeGame}
-        className="w-full py-3 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-lg font-semibold"
+        disabled={isProcessing}
+        className="w-full py-3 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-lg font-semibold disabled:opacity-50"
       >
         Chơi Lại 🎮
       </button>
