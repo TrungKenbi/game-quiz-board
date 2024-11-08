@@ -67,7 +67,7 @@ const GameQuizBoard = () => {
 
   const initializeGame = () => {
     const initialScores = TEAMS.reduce(
-      (acc, team) => ({ ...acc, [team]: 0 }),
+      (acc, team) => ({ ...acc, [team]: 10 }),
       {}
     );
     const initialMoves = TEAMS.reduce(
