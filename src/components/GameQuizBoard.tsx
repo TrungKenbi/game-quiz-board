@@ -81,12 +81,13 @@ const GameQuizBoard = () => {
     setMessage("Trò chơi bắt đầu! " + TEAMS[0] + " đi trước");
     setIsProcessing(false);
 
-    // Chia thành 2 giai đoạn
+    // Tạo mảng cố định cho phase 1
     const firstPhase = [
       ...Array(7).fill(CELL_TYPES.QUESTION),
       ...Array(3).fill(CELL_TYPES.LUCKY),
     ];
 
+    // Tạo mảng cố định cho phase 2
     const secondPhase = [
       ...Array(3).fill(CELL_TYPES.QUESTION),
       ...Array(1).fill(CELL_TYPES.LUCKY),
@@ -96,17 +97,35 @@ const GameQuizBoard = () => {
       ...Array(1).fill(CELL_TYPES.LEADER),
     ];
 
-    // Xáo trộn riêng từng giai đoạn
-    const shuffledFirstPhase = _.shuffle(firstPhase);
-    const shuffledSecondPhase = _.shuffle(secondPhase);
+    // Sử dụng key để đảm bảo client và server render giống nhau
+    const key = Date.now().toString();
+    const shuffledFirstPhase = _.shuffle([...firstPhase]);
+    const shuffledSecondPhase = _.shuffle([...secondPhase]);
 
-    // Ghép 2 giai đoạn
     setGameBoard([...shuffledFirstPhase, ...shuffledSecondPhase]);
   };
 
+  const [usedQuestions, setUsedQuestions] = useState<number[]>([]);
   const getRandomQuestion = () => {
-    const randomIndex = Math.floor(Math.random() * questions.length);
-    return questions[randomIndex];
+    // Lọc ra các câu hỏi chưa sử dụng
+    const availableQuestions = questions.filter(
+      (q) => !usedQuestions.includes(q.id)
+    );
+
+    // Nếu hết câu hỏi thì reset lại
+    if (availableQuestions.length === 0) {
+      setUsedQuestions([]);
+      return questions[0];
+    }
+
+    // Chọn ngẫu nhiên từ các câu còn lại
+    const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+    const selectedQuestion = availableQuestions[randomIndex];
+
+    // Đánh dấu câu hỏi đã sử dụng
+    setUsedQuestions((prev) => [...prev, selectedQuestion.id]);
+
+    return selectedQuestion;
   };
 
   const handleAnswerSelect = (answer: string) => {
@@ -155,27 +174,50 @@ const GameQuizBoard = () => {
     }, 250);
   };
 
-  // Thêm hiệu ứng pháo hoa đặc biệt khi thắng
   const fireWinnerConfetti = () => {
-    const duration = 3000;
-    const end = Date.now() + duration;
-
-    const interval = setInterval(() => {
-      if (Date.now() > end) {
-        return clearInterval(interval);
-      }
-
+    // Pháo hoa nổ từ giữa màn hình
+    const midConfetti = () => {
       confetti({
-        startVelocity: 30,
-        particleCount: 50,
+        particleCount: 100,
         spread: 360,
-        ticks: 60,
-        origin: {
-          x: Math.random(),
-          y: Math.random() - 0.2,
-        },
+        origin: { x: 0.5, y: 0.5 },
       });
-    }, 250);
+    };
+
+    // Pháo hoa nổ từ hai bên
+    const sideConfetti = () => {
+      confetti({
+        particleCount: 50,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+      });
+      confetti({
+        particleCount: 50,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+      });
+    };
+
+    // Pháo hoa nổ từ dưới lên
+    const bottomConfetti = () => {
+      confetti({
+        particleCount: 80,
+        startVelocity: 30,
+        spread: 360,
+        ticks: 200,
+        origin: { x: 0.5, y: 1 },
+      });
+    };
+
+    // Bắn pháo hoa theo thứ tự
+    midConfetti(); // Ngay lập tức
+    setTimeout(sideConfetti, 500); // Sau 0.5s
+    setTimeout(bottomConfetti, 1000); // Sau 1s
+    setTimeout(sideConfetti, 1500); // Sau 1.5s
+    setTimeout(midConfetti, 2000); // Sau 2s
+    setTimeout(bottomConfetti, 2500); // Sau 2.5s
   };
 
   const handleMoveComplete = (points: number, msg: string) => {
@@ -187,13 +229,6 @@ const GameQuizBoard = () => {
       }));
       // Bắn pháo hoa khi được cộng điểm
       fireConfetti();
-    }
-
-    // Đánh dấu ô đã sử dụng
-    if (selectedCell !== null) {
-      const newBoard = [...gameBoard];
-      newBoard[selectedCell] = null;
-      setGameBoard(newBoard);
     }
 
     // Cập nhật lượt chơi
@@ -221,7 +256,6 @@ const GameQuizBoard = () => {
       fireWinnerConfetti();
     }
   };
-
   const handleCellClick = (index: number) => {
     if (
       gameBoard[index] === null ||
@@ -234,6 +268,11 @@ const GameQuizBoard = () => {
     setIsProcessing(true);
     setSelectedCell(index);
     const cellType = gameBoard[index];
+
+    // Đánh dấu ô đã sử dụng ngay khi click
+    const newBoard = [...gameBoard];
+    newBoard[index] = null;
+    setGameBoard(newBoard);
 
     switch (cellType) {
       case CELL_TYPES.QUESTION:
@@ -273,12 +312,11 @@ const GameQuizBoard = () => {
           );
         } else {
           setMessage("Lựa chọn không hợp lệ!");
+          setIsProcessing(false);
         }
-        setIsProcessing(false);
         break;
 
       case CELL_TYPES.DOUBLE:
-        // Nhân đôi điểm hiện tại của team
         const currentScore = scores[TEAMS[currentTeam]];
         const doubledPoints = currentScore;
         setScores((prev) => ({
@@ -293,7 +331,6 @@ const GameQuizBoard = () => {
         break;
 
       case CELL_TYPES.LEADER:
-        // Tìm điểm cao nhất hiện tại
         const highestScore = Math.max(...Object.values(scores));
         const pointsToAdd = highestScore + 5 - scores[TEAMS[currentTeam]];
         setScores((prev) => ({
@@ -311,7 +348,9 @@ const GameQuizBoard = () => {
 
   return (
     <div className="p-4 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold text-center mb-6">Mini Game: Ô Cửa May Mắn - Nhóm 4</h1>
+      <h1 className="text-3xl font-bold text-center mb-6">
+        Mini Game: Ô Cửa May Mắn - Nhóm 4
+      </h1>
 
       {/* Bảng điểm */}
       <div className="grid grid-cols-5 gap-4 mb-6">
@@ -320,7 +359,7 @@ const GameQuizBoard = () => {
             key={team}
             className={`p-4 rounded-lg shadow-lg ${
               i === currentTeam && !gameEnded
-                ? "ring-2 ring-green-500 transform scale-105"
+                ? "ring-4 ring-green-500 transform scale-115"
                 : ""
             } ${TEAM_COLORS[team as keyof typeof TEAM_COLORS]} text-white`}
           >
