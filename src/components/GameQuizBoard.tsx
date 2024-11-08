@@ -81,15 +81,27 @@ const GameQuizBoard = () => {
     setMessage("Trò chơi bắt đầu! " + TEAMS[0] + " đi trước");
     setIsProcessing(false);
 
-    const cells = [
-      ...Array(10).fill(CELL_TYPES.QUESTION),
-      ...Array(4).fill(CELL_TYPES.LUCKY),
+    // Chia thành 2 giai đoạn
+    const firstPhase = [
+      ...Array(7).fill(CELL_TYPES.QUESTION),
+      ...Array(3).fill(CELL_TYPES.LUCKY),
+    ];
+
+    const secondPhase = [
+      ...Array(3).fill(CELL_TYPES.QUESTION),
+      ...Array(1).fill(CELL_TYPES.LUCKY),
       ...Array(2).fill(CELL_TYPES.UNLUCKY),
       ...Array(1).fill(CELL_TYPES.SABOTAGE),
       ...Array(2).fill(CELL_TYPES.DOUBLE),
       ...Array(1).fill(CELL_TYPES.LEADER),
     ];
-    setGameBoard(_.shuffle(cells));
+
+    // Xáo trộn riêng từng giai đoạn
+    const shuffledFirstPhase = _.shuffle(firstPhase);
+    const shuffledSecondPhase = _.shuffle(secondPhase);
+
+    // Ghép 2 giai đoạn
+    setGameBoard([...shuffledFirstPhase, ...shuffledSecondPhase]);
   };
 
   const getRandomQuestion = () => {
@@ -299,7 +311,7 @@ const GameQuizBoard = () => {
 
   return (
     <div className="p-4 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold text-center mb-6">Trò Chơi Ô Chữ</h1>
+      <h1 className="text-3xl font-bold text-center mb-6">Mini Game: Ô Cửa May Mắn - Nhóm 4</h1>
 
       {/* Bảng điểm */}
       <div className="grid grid-cols-5 gap-4 mb-6">
