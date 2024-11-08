@@ -54,7 +54,6 @@ const GameQuizBoard = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
-  const [selectedCell, setSelectedCell] = useState<number | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
 
@@ -273,7 +272,6 @@ const GameQuizBoard = () => {
       return;
 
     setIsProcessing(true);
-    setSelectedCell(index);
     setLoadingCell(index);
 
     const cellType = gameBoard[index];
@@ -337,7 +335,7 @@ const GameQuizBoard = () => {
           setIsProcessing(false);
           break;
       }
-    }, 0);
+    }, 2000);
   };
 
   return (
