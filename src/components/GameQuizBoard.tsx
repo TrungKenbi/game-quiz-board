@@ -41,7 +41,6 @@ const GameQuizBoard = () => {
     QUESTION: "Q",
     LUCKY: "L",
     UNLUCKY: "U",
-    SABOTAGE: "S",
     DOUBLE: "D",
     LEADER: "LD",
   };
@@ -81,28 +80,34 @@ const GameQuizBoard = () => {
     setMessage("Trò chơi bắt đầu! " + TEAMS[0] + " đi trước");
     setIsProcessing(false);
 
-    // Tạo mảng cố định cho phase 1
+    // Phase 1 (7 ô - Giai đoạn khởi động an toàn)
     const firstPhase = [
-      ...Array(7).fill(CELL_TYPES.QUESTION),
-      ...Array(3).fill(CELL_TYPES.LUCKY),
+      ...Array(5).fill(CELL_TYPES.QUESTION), // Nhiều câu hỏi để làm quen
+      ...Array(2).fill(CELL_TYPES.LUCKY), // Cơ hội cộng điểm an toàn
     ];
 
-    // Tạo mảng cố định cho phase 2
+    // Phase 2 (7 ô - Giai đoạn tranh đua)
     const secondPhase = [
-      ...Array(3).fill(CELL_TYPES.QUESTION),
-      ...Array(1).fill(CELL_TYPES.LUCKY),
-      ...Array(2).fill(CELL_TYPES.UNLUCKY),
-      ...Array(1).fill(CELL_TYPES.SABOTAGE),
-      ...Array(2).fill(CELL_TYPES.DOUBLE),
-      ...Array(1).fill(CELL_TYPES.LEADER),
+      ...Array(4).fill(CELL_TYPES.QUESTION), // Duy trì kiểm tra kiến thức
+      ...Array(2).fill(CELL_TYPES.LUCKY), // Cơ hội bứt phá
+      ...Array(1).fill(CELL_TYPES.UNLUCKY), // Yếu tố rủi ro đầu tiên
     ];
 
-    // Sử dụng key để đảm bảo client và server render giống nhau
-    const key = Date.now().toString();
-    const shuffledFirstPhase = _.shuffle([...firstPhase]);
-    const shuffledSecondPhase = _.shuffle([...secondPhase]);
+    // Phase 3 (6 ô - Giai đoạn gay cấn)
+    const thirdPhase = [
+      ...Array(2).fill(CELL_TYPES.QUESTION), // Ít câu hỏi hơn
+      ...Array(1).fill(CELL_TYPES.LUCKY), // Cơ hội cuối
+      ...Array(1).fill(CELL_TYPES.UNLUCKY), // Rủi ro cao
+      ...Array(1).fill(CELL_TYPES.DOUBLE), // Cơ hội nhân đôi điểm
+      ...Array(1).fill(CELL_TYPES.LEADER), // Game changer cuối cùng
+    ];
 
-    setGameBoard([...shuffledFirstPhase, ...shuffledSecondPhase]);
+    // Ghép các phase
+    setGameBoard([
+      ..._.shuffle([...firstPhase]),
+      ..._.shuffle([...secondPhase]),
+      ..._.shuffle([...thirdPhase]),
+    ]);
   };
 
   const [usedQuestions, setUsedQuestions] = useState<number[]>([]);
@@ -292,28 +297,6 @@ const GameQuizBoard = () => {
           `Không may! ${TEAMS[currentTeam]} bị -5 điểm 💔`
         );
         setIsProcessing(false);
-        break;
-
-      case CELL_TYPES.SABOTAGE:
-        const targetIndex = parseInt(
-          prompt(
-            `Chọn nhóm để trừ điểm (1, 2, 3, 5, 6), trừ ${TEAMS[currentTeam]}:`
-          ) || "0"
-        );
-        const targetTeam = `Nhóm ${targetIndex}`;
-        if (TEAMS.includes(targetTeam) && targetTeam !== TEAMS[currentTeam]) {
-          setScores((prev) => ({
-            ...prev,
-            [targetTeam]: Math.max(0, prev[targetTeam] - 5),
-          }));
-          handleMoveComplete(
-            0,
-            `${TEAMS[currentTeam]} đã trừ 5 điểm của ${targetTeam} 😈`
-          );
-        } else {
-          setMessage("Lựa chọn không hợp lệ!");
-          setIsProcessing(false);
-        }
         break;
 
       case CELL_TYPES.DOUBLE:
