@@ -7,7 +7,6 @@ import data from "@/app/data/questions";
 
 interface Question {
   id: number;
-  author: string;
   question: string;
   options: {
     A: string;
@@ -61,7 +60,7 @@ const GameQuizBoard = () => {
 
   useEffect(() => {
     initializeGame();
-    // Khởi tạo câu hỏi mẫu
+    // Khởi tạo câu hỏi
     setQuestions(data.questions);
   }, []);
 
@@ -71,7 +70,7 @@ const GameQuizBoard = () => {
       {}
     );
     const initialMoves = TEAMS.reduce(
-      (acc, team) => ({ ...acc, [team]: 5 }),
+      (acc, team) => ({ ...acc, [team]: 4 }),
       {}
     );
     setScores(initialScores);
@@ -338,7 +337,7 @@ const GameQuizBoard = () => {
           setIsProcessing(false);
           break;
       }
-    }, 2000);
+    }, 0);
   };
 
   return (
