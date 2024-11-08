@@ -261,6 +261,9 @@ const GameQuizBoard = () => {
       fireWinnerConfetti();
     }
   };
+
+  const [loadingCell, setLoadingCell] = useState<number | null>(null);
+
   const handleCellClick = (index: number) => {
     if (
       gameBoard[index] === null ||
@@ -272,61 +275,70 @@ const GameQuizBoard = () => {
 
     setIsProcessing(true);
     setSelectedCell(index);
+    setLoadingCell(index);
+
     const cellType = gameBoard[index];
 
-    // Đánh dấu ô đã sử dụng ngay khi click
-    const newBoard = [...gameBoard];
-    newBoard[index] = null;
-    setGameBoard(newBoard);
+    setTimeout(() => {
+      setLoadingCell(null);
 
-    switch (cellType) {
-      case CELL_TYPES.QUESTION:
-        const question = getRandomQuestion();
-        setCurrentQuestion(question);
-        setIsQuestionDialogOpen(true);
-        break;
+      // Đánh dấu ô đã sử dụng ngay khi click
+      const newBoard = [...gameBoard];
+      newBoard[index] = null;
+      setGameBoard(newBoard);
 
-      case CELL_TYPES.LUCKY:
-        handleMoveComplete(5, `May mắn! ${TEAMS[currentTeam]} được +5 điểm 🍀`);
-        setIsProcessing(false);
-        break;
+      switch (cellType) {
+        case CELL_TYPES.QUESTION:
+          const question = getRandomQuestion();
+          setCurrentQuestion(question);
+          setIsQuestionDialogOpen(true);
+          break;
 
-      case CELL_TYPES.UNLUCKY:
-        handleMoveComplete(
-          -5,
-          `Không may! ${TEAMS[currentTeam]} bị -5 điểm 💔`
-        );
-        setIsProcessing(false);
-        break;
+        case CELL_TYPES.LUCKY:
+          handleMoveComplete(
+            5,
+            `May mắn! ${TEAMS[currentTeam]} được +5 điểm 🍀`
+          );
+          setIsProcessing(false);
+          break;
 
-      case CELL_TYPES.DOUBLE:
-        const currentScore = scores[TEAMS[currentTeam]];
-        const doubledPoints = currentScore;
-        setScores((prev) => ({
-          ...prev,
-          [TEAMS[currentTeam]]: currentScore + doubledPoints,
-        }));
-        handleMoveComplete(
-          0,
-          `${TEAMS[currentTeam]} đã nhân đôi điểm! +${doubledPoints} điểm 🌟`
-        );
-        setIsProcessing(false);
-        break;
+        case CELL_TYPES.UNLUCKY:
+          handleMoveComplete(
+            -5,
+            `Không may! ${TEAMS[currentTeam]} bị -5 điểm 💔`
+          );
+          setIsProcessing(false);
+          break;
 
-      case CELL_TYPES.LEADER:
-        const highestScore = Math.max(...Object.values(scores));
-        const pointsToAdd = highestScore + 5 - scores[TEAMS[currentTeam]];
-        setScores((prev) => ({
-          ...prev,
-          [TEAMS[currentTeam]]: highestScore + 5,
-        }));
-        handleMoveComplete(
-          0,
-          `${TEAMS[currentTeam]} vượt lên dẫn đầu! +${pointsToAdd} điểm 🚀`
-        );
-        setIsProcessing(false);
-        break;
-    }
+        case CELL_TYPES.DOUBLE:
+          const currentScore = scores[TEAMS[currentTeam]];
+          const doubledPoints = currentScore;
+          setScores((prev) => ({
+            ...prev,
+            [TEAMS[currentTeam]]: currentScore + doubledPoints,
+          }));
+          handleMoveComplete(
+            0,
+            `${TEAMS[currentTeam]} đã nhân đôi điểm! +${doubledPoints} điểm 🌟`
+          );
+          setIsProcessing(false);
+          break;
+
+        case CELL_TYPES.LEADER:
+          const highestScore = Math.max(...Object.values(scores));
+          const pointsToAdd = highestScore + 5 - scores[TEAMS[currentTeam]];
+          setScores((prev) => ({
+            ...prev,
+            [TEAMS[currentTeam]]: highestScore + 5,
+          }));
+          handleMoveComplete(
+            0,
+            `${TEAMS[currentTeam]} vượt lên dẫn đầu! +${pointsToAdd} điểm 🚀`
+          );
+          setIsProcessing(false);
+          break;
+      }
+    }, 2000);
   };
 
   return (
@@ -375,16 +387,25 @@ const GameQuizBoard = () => {
             key={index}
             onClick={() => handleCellClick(index)}
             disabled={!cell || gameEnded || isProcessing}
-            className={`relative h-24 rounded-lg font-bold text-2xl text-white transition-all transform hover:scale-105 ${
+            className={`relative h-24 rounded-lg font-bold text-2xl text-white transition-all transform hover:scale-105 
+            ${
               cell
                 ? "bg-blue-500 hover:bg-blue-600 cursor-pointer"
                 : "bg-gray-300 cursor-not-allowed"
-            } ${isProcessing ? "opacity-50" : ""}`}
+            } 
+            ${isProcessing ? "opacity-50" : ""} 
+            ${loadingCell === index ? "animate-pulse" : ""}`}
           >
-            {/* Dấu ? hoặc ✓ ở giữa */}
-            <span className="absolute inset-0 flex items-center justify-center">
-              {cell ? "#" + (index + 1) : "✓"}
-            </span>
+            {/* Thêm loading spinner khi đang loading */}
+            {loadingCell === index ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : (
+              <span className="absolute inset-0 flex items-center justify-center">
+                {cell ? "#" + (index + 1) : "✓"}
+              </span>
+            )}
           </button>
         ))}
       </div>
