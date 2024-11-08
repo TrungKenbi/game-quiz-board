@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import _ from 'lodash';
-import confetti from 'canvas-confetti';
-import data from '@/app/data/questions';
-
+import React, { useState, useEffect } from "react";
+import _ from "lodash";
+import confetti from "canvas-confetti";
+import data from "@/app/data/questions";
 
 interface Question {
   id: number;
@@ -43,6 +42,8 @@ const GameQuizBoard = () => {
     LUCKY: "L",
     UNLUCKY: "U",
     SABOTAGE: "S",
+    DOUBLE: "D",
+    LEADER: "LD",
   };
 
   const [gameBoard, setGameBoard] = useState<(string | null)[]>([]);
@@ -83,8 +84,10 @@ const GameQuizBoard = () => {
     const cells = [
       ...Array(10).fill(CELL_TYPES.QUESTION),
       ...Array(4).fill(CELL_TYPES.LUCKY),
-      ...Array(3).fill(CELL_TYPES.UNLUCKY),
-      ...Array(3).fill(CELL_TYPES.SABOTAGE),
+      ...Array(2).fill(CELL_TYPES.UNLUCKY),
+      ...Array(1).fill(CELL_TYPES.SABOTAGE),
+      ...Array(2).fill(CELL_TYPES.DOUBLE),
+      ...Array(1).fill(CELL_TYPES.LEADER),
     ];
     setGameBoard(_.shuffle(cells));
   };
@@ -100,17 +103,17 @@ const GameQuizBoard = () => {
     setShowResult(true);
   };
 
-// Cập nhật handleCloseModal để thêm hiệu ứng khi trả lời đúng
-const handleCloseModal = () => {
+  // Cập nhật handleCloseModal để thêm hiệu ứng khi trả lời đúng
+  const handleCloseModal = () => {
     if (!showResult) return;
-    
+
     if (currentQuestion) {
       const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
       handleMoveComplete(
         isCorrect ? 5 : 0,
-        isCorrect ? 
-          `${TEAMS[currentTeam]} trả lời đúng! +5 điểm 🎯` : 
-          `${TEAMS[currentTeam]} trả lời sai 😢`
+        isCorrect
+          ? `${TEAMS[currentTeam]} trả lời đúng! +5 điểm 🎯`
+          : `${TEAMS[currentTeam]} trả lời sai 😢`
       );
     }
 
@@ -127,7 +130,7 @@ const handleCloseModal = () => {
     confetti({
       particleCount: 100,
       spread: 70,
-      origin: { x: 0.1, y: 0.6 }
+      origin: { x: 0.1, y: 0.6 },
     });
 
     // Bắn từ góc phải
@@ -135,7 +138,7 @@ const handleCloseModal = () => {
       confetti({
         particleCount: 100,
         spread: 70,
-        origin: { x: 0.9, y: 0.6 }
+        origin: { x: 0.9, y: 0.6 },
       });
     }, 250);
   };
@@ -157,8 +160,8 @@ const handleCloseModal = () => {
         ticks: 60,
         origin: {
           x: Math.random(),
-          y: Math.random() - 0.2
-        }
+          y: Math.random() - 0.2,
+        },
       });
     }, 250);
   };
@@ -166,13 +169,13 @@ const handleCloseModal = () => {
   const handleMoveComplete = (points: number, msg: string) => {
     // Cập nhật điểm số
     if (points > 0) {
-        setScores(prev => ({
-          ...prev,
-          [TEAMS[currentTeam]]: Math.max(0, prev[TEAMS[currentTeam]] + points)
-        }));
-        // Bắn pháo hoa khi được cộng điểm
-        fireConfetti();
-      }
+      setScores((prev) => ({
+        ...prev,
+        [TEAMS[currentTeam]]: Math.max(0, prev[TEAMS[currentTeam]] + points),
+      }));
+      // Bắn pháo hoa khi được cộng điểm
+      fireConfetti();
+    }
 
     // Đánh dấu ô đã sử dụng
     if (selectedCell !== null) {
@@ -194,13 +197,17 @@ const handleCloseModal = () => {
     setMessage(msg + ` | Đến lượt ${TEAMS[nextTeam]}`);
 
     // Kiểm tra kết thúc game
-    if (Object.values(newMoves).every(m => m === 0)) {
-        const winner = Object.entries(scores).reduce((a, b) => a[1] > b[1] ? a : b)[0];
-        setMessage(`🎉 Trò chơi kết thúc! ${winner} chiến thắng với ${scores[winner]} điểm! 🎉`);
-        setGameEnded(true);
-        // Bắn pháo hoa đặc biệt khi kết thúc game
-        fireWinnerConfetti();
-      }
+    if (Object.values(newMoves).every((m) => m === 0)) {
+      const winner = Object.entries(scores).reduce((a, b) =>
+        a[1] > b[1] ? a : b
+      )[0];
+      setMessage(
+        `🎉 Trò chơi kết thúc! ${winner} chiến thắng với ${scores[winner]} điểm! 🎉`
+      );
+      setGameEnded(true);
+      // Bắn pháo hoa đặc biệt khi kết thúc game
+      fireWinnerConfetti();
+    }
   };
 
   const handleCellClick = (index: number) => {
@@ -257,6 +264,36 @@ const handleCloseModal = () => {
         }
         setIsProcessing(false);
         break;
+
+      case CELL_TYPES.DOUBLE:
+        // Nhân đôi điểm hiện tại của team
+        const currentScore = scores[TEAMS[currentTeam]];
+        const doubledPoints = currentScore;
+        setScores((prev) => ({
+          ...prev,
+          [TEAMS[currentTeam]]: currentScore + doubledPoints,
+        }));
+        handleMoveComplete(
+          0,
+          `${TEAMS[currentTeam]} đã nhân đôi điểm! +${doubledPoints} điểm 🌟`
+        );
+        setIsProcessing(false);
+        break;
+
+      case CELL_TYPES.LEADER:
+        // Tìm điểm cao nhất hiện tại
+        const highestScore = Math.max(...Object.values(scores));
+        const pointsToAdd = highestScore + 5 - scores[TEAMS[currentTeam]];
+        setScores((prev) => ({
+          ...prev,
+          [TEAMS[currentTeam]]: highestScore + 5,
+        }));
+        handleMoveComplete(
+          0,
+          `${TEAMS[currentTeam]} vượt lên dẫn đầu! +${pointsToAdd} điểm 🚀`
+        );
+        setIsProcessing(false);
+        break;
     }
   };
 
@@ -310,10 +347,9 @@ const handleCloseModal = () => {
                 : "bg-gray-300 cursor-not-allowed"
             } ${isProcessing ? "opacity-50" : ""}`}
           >
-
             {/* Dấu ? hoặc ✓ ở giữa */}
             <span className="absolute inset-0 flex items-center justify-center">
-              {cell ? "#" + (index +1 ): "✓"}
+              {cell ? "#" + (index + 1) : "✓"}
             </span>
           </button>
         ))}
