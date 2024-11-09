@@ -144,10 +144,10 @@ const GameQuizBoard = () => {
     if (currentQuestion) {
       const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
       handleMoveComplete(
-        isCorrect ? 5 : 0,
+        isCorrect ? 5 : -5,
         isCorrect
           ? `${TEAMS[currentTeam]} trả lời đúng! +5 điểm 🎯`
-          : `${TEAMS[currentTeam]} trả lời sai 😢`
+          : `${TEAMS[currentTeam]} trả lời sai! -5 điểm 😢`
       );
     }
 
@@ -225,11 +225,12 @@ const GameQuizBoard = () => {
 
   const handleMoveComplete = (points: number, msg: string) => {
     // Cập nhật điểm số
+    setScores((prev) => ({
+      ...prev,
+      [TEAMS[currentTeam]]: prev[TEAMS[currentTeam]] + points,
+    }));
+    
     if (points > 0) {
-      setScores((prev) => ({
-        ...prev,
-        [TEAMS[currentTeam]]: Math.max(0, prev[TEAMS[currentTeam]] + points),
-      }));
       // Bắn pháo hoa khi được cộng điểm
       fireConfetti();
     }
@@ -400,7 +401,7 @@ const GameQuizBoard = () => {
               </div>
             ) : (
               <span className="absolute inset-0 flex items-center justify-center">
-                {cell ? "#" + (index + 1) : "✓"}
+                {cell ? (index + 1) : "✓"}
               </span>
             )}
           </button>
