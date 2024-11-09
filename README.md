@@ -38,5 +38,5 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 # Build Docker image for Linux(x64)
 ```sh
-DOCKER_DEFAULT_PLATFORM=linux/amd64 docker build -t trungkenbi/game-quiz-board:v1.0.0 --push .
+DOCKER_DEFAULT_PLATFORM=linux/amd64 docker build -t trungkenbi/game-quiz-board:v1.0.1 --push .
 ```
