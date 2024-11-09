@@ -229,7 +229,7 @@ const GameQuizBoard = () => {
       ...prev,
       [TEAMS[currentTeam]]: prev[TEAMS[currentTeam]] + points,
     }));
-    
+
     if (points > 0) {
       // Bắn pháo hoa khi được cộng điểm
       fireConfetti();
@@ -401,7 +401,7 @@ const GameQuizBoard = () => {
               </div>
             ) : (
               <span className="absolute inset-0 flex items-center justify-center">
-                {cell ? (index + 1) : "✓"}
+                {cell ? index + 1 : "✓"}
               </span>
             )}
           </button>
@@ -411,21 +411,22 @@ const GameQuizBoard = () => {
       {/* Modal câu hỏi */}
       {isQuestionDialogOpen && currentQuestion && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
-            <div className="mb-6">
-              <h3 className="text-xl font-bold mb-4">
+          <div className="bg-white rounded-xl p-12 max-w-6xl w-11/12 mx-4">
+            <div className="mb-12">
+              <h3 className="text-3xl font-bold mb-8">
                 Câu hỏi cho {TEAMS[currentTeam]}
               </h3>
-              <p className="text-lg mb-4">{currentQuestion.question}</p>
+              <p className="text-3xl mb-12">{currentQuestion.question}</p>
             </div>
 
-            <div className="space-y-3">
+            {/* 2x2 Grid layout for answers */}
+            <div className="grid grid-cols-2 gap-8 mb-12">
               {Object.entries(currentQuestion.options).map(([key, value]) => (
                 <button
                   key={key}
                   onClick={() => handleAnswerSelect(key)}
                   disabled={showResult}
-                  className={`w-full p-4 text-left rounded-lg transition-colors border ${
+                  className={`p-8 text-2xl text-left rounded-xl transition-colors border-2 ${
                     showResult
                       ? key === currentQuestion.correctAnswer
                         ? "bg-green-100 border-green-500"
@@ -436,24 +437,28 @@ const GameQuizBoard = () => {
                       : "hover:bg-gray-100 border-gray-200"
                   }`}
                 >
-                  {key}. {value}
+                  <span className="font-bold">{key}.</span> {value}
                   {showResult && key === currentQuestion.correctAnswer && (
-                    <span className="float-right text-green-500">✓</span>
+                    <span className="float-right text-green-500 text-3xl">
+                      ✓
+                    </span>
                   )}
                   {showResult &&
                     key === selectedAnswer &&
                     key !== currentQuestion.correctAnswer && (
-                      <span className="float-right text-red-500">✗</span>
+                      <span className="float-right text-red-500 text-3xl">
+                        ✗
+                      </span>
                     )}
                 </button>
               ))}
             </div>
 
             {showResult && (
-              <div className="mt-6 text-center">
+              <div className="mt-12 text-center">
                 <button
                   onClick={handleCloseModal}
-                  className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  className="px-12 py-4 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors text-2xl font-semibold"
                 >
                   Đóng
                 </button>
